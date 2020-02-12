@@ -4,6 +4,7 @@
 Built with React/NextJS and Mapbox GL JS.  
 
 Some bootstrapping configuration copied from [volle.io](https://github.com/volleio/volleio.github.io). 
+Typings for @mapbox/mapbox-gl-geocoder adapted from [use-strict](https://gist.github.com/use-strict/b7363cf9ffbfd0f65582f708d4c22e67).
 
 
 
@@ -11,7 +12,7 @@ Some bootstrapping configuration copied from [volle.io](https://github.com/volle
 
 ✅ Add Mapbox GL JS module  
 
-⬜ Add geolocator input (search and fly to location)  
+⬜ Add geocoder input (search and fly to location)  
 
 ⬜ Create 'drawing' mode  
 > ⬜ Allow adding of geopoints on mouse click  

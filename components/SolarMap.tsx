@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import mapboxgl from 'mapbox-gl';
+import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	constructor(props: ISolarMapProps) {
@@ -11,7 +12,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			<div className="solarmap">
 				<div id="mapbox-container" className="mapbox-container"></div>
 				<style jsx>
-				{`
+					{`
 					.solarmap {
 						position: relative;
 						width: 100%;
@@ -24,6 +25,13 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 						bottom: 0;
 						left: 0;
 						right: 0;
+					}
+				`}
+				</style>
+				<style jsx global>
+					{`
+					.mapboxgl-ctrl-top-right {
+						display: flex;						
 					}
 				`}
 				</style>
@@ -40,7 +48,21 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			center: [-98.5795, 39.8283],
 			zoom: 3,
 		});
-    }
+
+		map.addControl(new mapboxgl.GeolocateControl({
+			positionOptions: {
+				enableHighAccuracy: true
+			},
+			trackUserLocation: true
+		}));
+
+		map.addControl(
+			new MapboxGeocoder({
+				accessToken: mapboxgl.accessToken,
+				mapboxgl: mapboxgl
+			})
+		);
+	}
 }
 
 interface ISolarMapProps {
