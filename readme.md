@@ -3,6 +3,8 @@
 
 Built with React/NextJS and Mapbox GL JS.  
 
+Some bootstrapping configuration copied from [volle.io](https://github.com/volleio/volleio.github.io). 
+
 
 
 ## TODO:
