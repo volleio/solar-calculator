@@ -9,7 +9,7 @@ Some bootstrapping configuration copied from [volle.io](https://github.com/volle
 
 ## TODO:
 
-⬜ Add Mapbox GL JS module  
+✅ Add Mapbox GL JS module  
 
 ⬜ Add geolocator input (search and fly to location)  
 
