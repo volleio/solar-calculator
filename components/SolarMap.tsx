@@ -1,6 +1,9 @@
 import React, { Component } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import * as turf from '@turf/turf';
+import area from '@turf/area';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	constructor(props: ISolarMapProps) {
@@ -62,6 +65,37 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 				mapboxgl: mapboxgl
 			})
 		);
+
+		const draw = new MapboxDraw({
+			displayControlsDefault: false,
+			controls: {
+				polygon: true,
+				trash: true
+			}
+		});
+		map.addControl(draw);
+
+		map.on('draw.create', updateArea);
+		map.on('draw.delete', updateArea);
+		map.on('draw.update', updateArea);
+
+		function updateArea(evt: Event) {
+			var data = draw.getAll();
+			var answer = document.getElementById('calculated-area') as HTMLElement;
+			if (data.features.length > 0) {
+				var area = turf.area(data);
+				// restrict to area to 2 decimal points
+				var rounded_area = Math.round(area * 100) / 100;
+				answer.innerHTML =
+					'<p><strong>' +
+					rounded_area +
+					'</strong></p><p>square meters</p>';
+			} else {
+				answer.innerHTML = '';
+				if (evt.type !== 'draw.delete')
+					alert('Use the draw tools to draw a polygon!');
+			}
+		}
 	}
 }
 
