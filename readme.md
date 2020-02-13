@@ -1,7 +1,7 @@
 # Solar Calculator
 ### A single-page web application for mapping potential solar installation locations. 
 
-Built with React/NextJS and Mapbox GL JS.  
+Built with React/NextJS, Mapbox GL JS (including mapbox-gl-geocoder and mapbox-gl-draw), and Turf.js.  
 
 Some bootstrapping configuration copied from [volle.io](https://github.com/volleio/volleio.github.io). 
 Typings for @mapbox/mapbox-gl-geocoder adapted from [use-strict](https://gist.github.com/use-strict/b7363cf9ffbfd0f65582f708d4c22e67).
@@ -12,16 +12,19 @@ Typings for @mapbox/mapbox-gl-geocoder adapted from [use-strict](https://gist.gi
 
 ✅ Add Mapbox GL JS module  
 
-⬜ Add geocoder input (search and fly to location)  
+✅ Add geocoder input (search and fly to location)  
 
-⬜ Create 'drawing' mode  
-> ⬜ Allow adding of geopoints on mouse click  
-> ⬜ Connect geopoints with lines  
-> ⬜ Create shaded polygon when closing line (clicking on first line)  
+✅ Create 'drawing' mode  
+> ✅ Allow adding of geopoints on mouse click  
+> ✅ Connect geopoints with lines  
+> ✅ Create shaded polygon when closing the line (clicking on first/last point)  
 
-⬜ Calculate area of polygon  
+✅ Calculate area of polygon  
 
-⬜ Design initial algorithm for calculating nominal power of a solar installation based soley on polygon area  
+⬜ Design initial algorithm for calculating nominal power of a solar installation based solely on polygon area  
+> ✅ Learn how to use nrel.gov PVWatts API
+> ⬜ Implement basic request
+> ⬜ Output result in UI
 
 ⬜ Design & implement UI for displaying solar power calulation  
 
