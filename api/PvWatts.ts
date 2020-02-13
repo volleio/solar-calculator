@@ -1,22 +1,12 @@
 /**
- * Represents an individual request to PVWatts API, for use by PvWattsApi class.
- * API documentation online at: https://developer.nrel.gov/docs/solar/pvwatts/v6/#request-parameters
- */
-export default class PvWattsRequest {
-    constructor(parameters: PvWattsRequestParameters) {
-
-    }
-}
-
-/**
  * All of the required paramters for making API requests, as well as recommended optional parameters.
  */
-export interface PvWattsRequestParameters {
+export interface RequestParameters {
     /** The output response format. */
     format: "json" | "xml";
 
     /** The developer API key. */
-    api_key: string;
+    api_key: string | null; // nullable because the API key is set server-side
 
     /** 
      * Nameplate capacity (kW).
@@ -25,7 +15,7 @@ export interface PvWattsRequestParameters {
     system_capacity: number;
 
     /** Module type. */
-    module_type: PvWattsModuleType;
+    module_type: ModuleType;
 
     /** 
      * System losses (percent).
@@ -34,7 +24,7 @@ export interface PvWattsRequestParameters {
     losses: number;
 
     /** Array type. */
-    array_type: PvWattsArrayType;
+    array_type: ArrayType;
 
     /** 
      * Tilt angle (degrees).
@@ -97,13 +87,13 @@ export interface PvWattsRequestParameters {
     inv_eff?: number;
 }
 
-enum PvWattsModuleType {
+export enum ModuleType {
     standard = 0,
     premium = 1,
     thin_film = 2
 }
 
-enum PvWattsArrayType {
+export enum ArrayType {
     fixed_open_rack = 0,
     fixed_roof_mounted = 1,
     one_axis = 2,
@@ -111,9 +101,9 @@ enum PvWattsArrayType {
     two_axis = 4,
 }
 
-export interface PvWattsResponse {
+export interface Response {
     /** The input parameters received in the request. */
-    inputs: PvWattsRequestParameters;
+    inputs: RequestParameters;
 
     /** Any error messages resulting from the request. */
     errors: string[];

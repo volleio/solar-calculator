@@ -6,6 +6,10 @@ import * as turf from '@turf/turf';
 import area from '@turf/area';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
+	private readonly SOLAR_CALCULATION_WAIT = 500; // 0.5 seconds
+
+	private solarCalculationTimeout: number = -1;
+
 	constructor(props: ISolarMapProps) {
 		super(props);
 	}
@@ -189,18 +193,69 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	}
 
 	private UpdateArea(evt: Event, draw: MapboxDraw) {
-		const data = draw.getAll();
+		const polygonData = draw.getAll();
 
-		if (data.features.length > 0) {
-			const area = turf.area(data);
-			
+		if (polygonData.features.length > 0) {
+			// Loading indicator to show data isn't up to date
+			this.SetSolarCalulationState(SolarCalulationState.loading);
+
+			// Reset timeout. We only make a query every SOLAR_CALCULATION_WAIT so that requests aren't being made
+			// while the user is currently updating the polygon, and so that we don't overload the API.
+			if (this.solarCalculationTimeout >= 0)
+				clearTimeout(this.solarCalculationTimeout);
+
+			this.solarCalculationTimeout = window.setTimeout(() => {
+				this.UpdateSolarCalculation(polygonData)
+			}, this.SOLAR_CALCULATION_WAIT);
+
 		} else { // Polygon deleted
-
+			this.SetSolarCalulationState(SolarCalulationState.blank);
 
 			if (evt.type !== 'draw.delete')
 				alert('Use the draw tools to draw a polygon!');
 		}
 	}
+
+	private SetSolarCalulationState(state: SolarCalulationState) {
+		// Remove any style modifications
+
+
+		// Set loading/error styles
+		if (state === SolarCalulationState.loading) {
+
+		} else if (state === SolarCalulationState.error) {
+
+		} else if (state === SolarCalulationState.value) {
+			// Set solar calulation values
+
+		}
+	}
+
+	/** */
+	private async UpdateSolarCalculation(polygonData: any) {
+		// Use turf to calculate necessary/relevant info about the polygon
+		const area = turf.area(polygonData);
+		const center = turf.center(polygonData);
+
+		const pvWattsResponse = await (await fetch('api/PvWatts', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'Content-Type': 'application/json',
+			},
+			body: querystring.stringify({
+				tp1 : newTypingPattern,
+				tp2 : oldTypingPattern,
+				quality : quality.toString(),
+			}),
+		})).json();
+	}
+}
+
+enum SolarCalulationState {
+	blank,
+	loading,
+	error,
+	value
 }
 
 interface ISolarMapProps {
