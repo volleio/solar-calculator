@@ -1,11 +1,17 @@
-module.exports = (nextConfig = {}) => {
-  return Object.assign({}, nextConfig, {
-    webpack: (config, options) => {
+const compose = require('next-compose');
+
+const cssConfig = {
+    cssModules: true
+};
+
+module.exports = compose([
+  {
+    webpack: config => {
       config.node = {
         fs: "empty"
       };
 
       return config;
     }
-  });
-};
+  }
+]);

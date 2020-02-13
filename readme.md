@@ -21,7 +21,10 @@ Typings for @mapbox/mapbox-gl-geocoder adapted from [use-strict](https://gist.gi
 
 ✅ Calculate area of polygon  
 
-⬜ Design initial algorithm for calculating nominal power of a solar installation based soley on polygon area  
+⬜ Design initial algorithm for calculating nominal power of a solar installation based solely on polygon area  
+> ✅ Learn how to use nrel.gov PVWatts API
+> ⬜ Implement basic request
+> ⬜ Output result in UI
 
 ⬜ Design & implement UI for displaying solar power calulation  
 

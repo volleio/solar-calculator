@@ -3,10 +3,22 @@
 declare namespace __MapboxDraw {
     interface Options {
         displayControlsDefault?: boolean,
-        controls: {
-            polygon?: boolean,
-            trash?: boolean
-        }
+        controls?: DrawControls,
+        modes?: Mode,
+        styles?: { [key: string]: any; }[],
+    }
+
+    interface DrawControls {
+        polygon?: boolean,
+        trash?: boolean
+    }
+
+    enum Mode {
+        SIMPLE_SELECT,
+        DIRECT_SELECT,
+        DRAW_POINT,
+        DRAW_POLYGON,
+        DRAW_LINE_STRING,
     }
 }
 
@@ -25,6 +37,8 @@ declare class MapboxDraw extends mapboxgl.Control {
      */
     off(type: string, listener: (Event) => any): this;
     off(type: string, layer: string, listener: (Event) => any): this;
+
+    static readonly modes: typeof __MapboxDraw.Mode;
 }
 
 declare module '@mapbox/mapbox-gl-draw' {
