@@ -2,18 +2,24 @@ import React, { Component } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+//@ts-ignore
+import StaticMode from '@mapbox/mapbox-gl-draw-static-mode';
 import * as turf from '@turf/turf';
 import PvWattsApi from '../api/PvWattsApi';
 import * as PvWatts from '../api/PvWatts';
 import MapMenu, { SolarCalculationState } from './MapMenu';
+import { Styles } from './Styles';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
-	private readonly SOLAR_CALCULATION_WAIT = 500; // 0.5 seconds
+	private readonly POLYGON_UPDATE_WAIT = 250; // 0.25 seconds
+	private readonly SOLAR_CALCULATION_WAIT = 1000; // 1 second
 
 	private pvWattsApi: PvWattsApi;
 
 	private moduleEfficiency = 0.15;
+	private polygonUpdateTimeout: number = -1;
 	private solarCalculationTimeout: number = -1;
+	private hasDrawnPolygon = false;
 
 	constructor(props: ISolarMapProps) {
 		super(props);
@@ -29,7 +35,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		return (
 			<div className="solarmap">
 				<div id="mapbox-container" className="mapbox-container"></div>
-				<MapMenu solarCalculationState={this.state.solarCalculationState}/>
+				<MapMenu solarCalculationState={this.state.solarCalculationState} solarCalculationStateMessage={this.state.solarCalculationStateMessage}/>
 				<style jsx>
 					{`
 					.solarmap {
@@ -50,7 +56,11 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 				<style jsx global>
 					{`
 					.mapboxgl-ctrl-top-right {
-						display: flex;						
+						display: flex;
+						align-items: center;
+					}
+					.mapboxgl-ctrl-top-right > .mapboxgl-ctrl {
+						flex-shrink: 1;
 					}
 				`}
 				</style>
@@ -82,146 +92,50 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			})
 		);
 
+		MapboxDraw.modes.static = StaticMode;
 		const draw = new MapboxDraw({
 			displayControlsDefault: false,
 			controls: {
 				polygon: true,
 				trash: true
 			},
-			// modes: MapboxDraw.modes.DIRECT_SELECT,
-			styles: [
-				// ACTIVE (being drawn)
-				// line stroke
-				{
-					"id": "gl-draw-line",
-					"type": "line",
-					"filter": ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-					"layout": {
-					  "line-cap": "round",
-					  "line-join": "round"
-					},
-					"paint": {
-					  "line-color": "#001484",
-					  "line-dasharray": [0.2, 2],
-					  "line-width": 2
-					}
-				},
-				// polygon fill
-				{
-				  "id": "gl-draw-polygon-fill",
-				  "type": "fill",
-				  "filter": ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-				  "paint": {
-					"fill-color": "#fbdc75",
-					"fill-outline-color": "#001484",
-					"fill-opacity": 0.5
-					// "background-pattern": ""
-				  }
-				},
-				// polygon outline stroke
-				// This doesn't style the first edge of the polygon, which uses the line stroke styling instead
-				{
-				  "id": "gl-draw-polygon-stroke-active",
-				  "type": "line",
-				  "filter": ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-				  "layout": {
-					"line-cap": "round",
-					"line-join": "round"
-				  },
-				  "paint": {
-					"line-color": "#001484",
-					"line-dasharray": [0.2, 2],
-					"line-width": 2
-				  }
-				},
-				// vertex point halos
-				{
-				  "id": "gl-draw-polygon-and-line-vertex-halo-active",
-				  "type": "circle",
-				  "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
-				  "paint": {
-					"circle-radius": 5,
-					"circle-color": "#FFF"
-				  }
-				},
-				// vertex points
-				{
-				  "id": "gl-draw-polygon-and-line-vertex-active",
-				  "type": "circle",
-				  "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
-				  "paint": {
-					"circle-radius": 3,
-					"circle-color": "#001484",
-				  }
-				},
-			
-				// INACTIVE (static, already drawn)
-				// line stroke
-				{
-					"id": "gl-draw-line-static",
-					"type": "line",
-					"filter": ["all", ["==", "$type", "LineString"], ["==", "mode", "static"]],
-					"layout": {
-					  "line-cap": "round",
-					  "line-join": "round"
-					},
-					"paint": {
-					  "line-color": "#000",
-					  "line-width": 3
-					}
-				},
-				// polygon fill
-				{
-				  "id": "gl-draw-polygon-fill-static",
-				  "type": "fill",
-				  "filter": ["all", ["==", "$type", "Polygon"], ["==", "mode", "static"]],
-				  "paint": {
-					"fill-color": "#000",
-					"fill-outline-color": "#000",
-					"fill-opacity": 0.1
-				  }
-				},
-				// polygon outline
-				{
-				  "id": "gl-draw-polygon-stroke-static",
-				  "type": "line",
-				  "filter": ["all", ["==", "$type", "Polygon"], ["==", "mode", "static"]],
-				  "layout": {
-					"line-cap": "round",
-					"line-join": "round"
-				  },
-				  "paint": {
-					"line-color": "#000",
-					"line-width": 3
-				  }
-				}
-			  ],
+			defaultMode: 'static',
+			styles: Styles.DrawStyles,
 		});
 		map.addControl(draw);
 
-		map.on('draw.create', (evt) => this.UpdateArea(evt, draw));
-		map.on('draw.delete', (evt) => this.UpdateArea(evt, draw));
-		map.on('draw.update', (evt) => this.UpdateArea(evt, draw));
+		map.on('draw.create', (evt) => {
+			this.hasDrawnPolygon = true;
+			this.UpdatePolygon(evt, draw);
+		});
+		map.on('draw.delete', (evt) => {
+			this.hasDrawnPolygon = false;
+			this.UpdatePolygon(evt, draw);
+		});
+		map.on('draw.update', (evt) => this.UpdatePolygon(evt, draw));
+
+		map.on('zoomend', (evt) => {
+			if (map.getZoom() < 16)
+				draw.changeMode('static');
+			else
+				draw.changeMode(this.hasDrawnPolygon ? 'simple_select' : 'draw_polygon')
+		});
 	}
 
-	private UpdateArea(evt: Event, draw: MapboxDraw) {
+	private UpdatePolygon(evt: Event, draw: MapboxDraw): void {
 		const polygonData = draw.getAll();
 
 		if (polygonData.features.length > 0) {
 			// Loading indicator to show data isn't up to date
 			this.SetSolarCalculationState(SolarCalculationState.loading);
 
-			// Reset timeout. We only make a query every SOLAR_CALCULATION_WAIT so that requests aren't being made
-			// while the user is currently updating the polygon, and so that we don't overload the API.
-			if (this.solarCalculationTimeout >= 0)
-				clearTimeout(this.solarCalculationTimeout);
-
-			this.solarCalculationTimeout = window.setTimeout(() => {
-				// Make request for solar calculation and handle result
-				const solarCalculation = this.UpdateSolarCalculation(polygonData);
-				this.HandleSolarCalculation(solarCalculation);
-			}, this.SOLAR_CALCULATION_WAIT);
-
+			// Don't update on every change, only every 250ms; calculating area is potentially expensive
+			if (this.polygonUpdateTimeout === -1) {
+				this.polygonUpdateTimeout = window.setTimeout(() => {
+					this.polygonUpdateTimeout = -1;
+					this.UpdatePolygonCalculations(polygonData);
+				}, this.POLYGON_UPDATE_WAIT);
+			}
 		} else { // Polygon deleted
 			this.SetSolarCalculationState(SolarCalculationState.blank);
 
@@ -230,34 +144,20 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		}
 	}
 
-	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>) {
-		solarCalculation.then((response) => {
-			if (response.errors)
-				this.SetSolarCalculationState(SolarCalculationState.error, undefined, response.errors.join('\r\n"'));
+	private UpdatePolygonCalculations(polygonData: any): void {
+		console.debug("UpdatePolygonCalculations");
+		// Reset solar calculation timeout. We only make a query at most SOLAR_CALCULATION_WAIT ms so that requests 
+		// aren't being made while the user is currently updating the polygon, and so that we don't overload the API.
+		if (this.solarCalculationTimeout >= 0)
+			clearTimeout(this.solarCalculationTimeout);
 
-			this.SetSolarCalculationState(SolarCalculationState.value, response.outputs);
-		});
-		
-		solarCalculation.catch((reason) => {
-			console.error(reason);
-			this.SetSolarCalculationState(SolarCalculationState.error, undefined, reason instanceof Error ? reason.message : undefined);
-		});
-	}
+		this.solarCalculationTimeout = window.setTimeout(() => {
+			this.solarCalculationTimeout = -1;
 
-	private SetSolarCalculationState(state: SolarCalculationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
-		// Remove any style modifications
-
-
-		// Set loading/error styles
-		if (state === SolarCalculationState.loading) {
-
-		} else if (state === SolarCalculationState.error) {
-			// if (errorMessage)
-			
-		} else if (state === SolarCalculationState.value) {
-			// Set solar calulation values
-
-		}
+			// Make request for solar calculation and handle result
+			const solarCalculation = this.UpdateSolarCalculation(polygonData);
+			this.HandleSolarCalculation(solarCalculation);
+		}, this.SOLAR_CALCULATION_WAIT);
 	}
 
 	/**
@@ -265,6 +165,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	 * @param polygonData Mapbox GeoJSON data for calculating 
 	 */
 	private async UpdateSolarCalculation(polygonData: any) {
+		console.debug("UpdateSolarCalculation");
 		// Use turf to calculate necessary/relevant info about the polygon
 		const area = turf.area(polygonData); // square meters
 		const system_capacity = area * this.moduleEfficiency; // DC System Size in kW
@@ -280,7 +181,42 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 
 		const [lon, lat] = centroid.geometry.coordinates;
 
+		// First update immediately calculatable values: area and nominal power
+
 		return this.pvWattsApi.GetPvWattsData({ system_capacity, lat, lon });
+	}
+
+	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>): void {
+		console.debug("HandleSolarCalculation");
+		solarCalculation.then((response) => {
+			if (response.errors)
+				this.SetSolarCalculationState(SolarCalculationState.error, undefined, response.errors.join('\r\n"'));
+
+			this.SetSolarCalculationState(SolarCalculationState.value, response.outputs);
+		});
+		
+		solarCalculation.catch((reason) => {
+			console.error(reason);
+			this.SetSolarCalculationState(SolarCalculationState.error, undefined, reason instanceof Error ? reason.message : undefined);
+		});
+	}
+
+	private SetSolarCalculationState(state: SolarCalculationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
+		this.setState({ solarCalculationStateMessage: errorMessage });
+		
+		// Set menu styles and text
+		if (state === SolarCalculationState.blank) {
+			this.setState({ solarCalculationState: SolarCalculationState.blank });
+		} else if (state === SolarCalculationState.loading) {
+			this.setState({ solarCalculationState: SolarCalculationState.loading });
+		} else if (state === SolarCalculationState.error) {
+			this.setState({ solarCalculationState: SolarCalculationState.error });
+		} else if (state === SolarCalculationState.value) {
+			this.setState({ solarCalculationState: SolarCalculationState.value });
+
+			// Set solar calulation values
+			console.debug(values)
+		}
 	}
 }
 
@@ -289,6 +225,7 @@ interface ISolarMapProps {
 
 interface ISolarMapState {
 	solarCalculationState: SolarCalculationState;
+	solarCalculationStateMessage?: string;
 }
 
 export default SolarMap;

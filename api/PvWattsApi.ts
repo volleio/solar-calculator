@@ -26,7 +26,7 @@ export default class PvWattsApi {
         Object.assign(requestParameters, this.apiAdvancedOptions);
         Object.assign(requestParameters, requestOptions);
 
-        const pvWattsResponse: PvWatts.Response = await (await fetch('api/PvWatts', {
+        const pvWattsResponse: PvWatts.Response = await (await fetch('api/pvwatts-endpoint', {
 			method: 'POST',
 			headers: {
 			    'Content-Type': 'application/json',

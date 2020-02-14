@@ -15,8 +15,9 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 			<div className="map-menu">
 				<div className="solar-calculation">
 					<div className="solar-calculation__header">
-						Solar Energy:
-						<div className={solarCalculationStateClass}>
+						Solar Energy
+						<div className={solarCalculationStateClass} title={this.props.solarCalculationStateMessage ? 
+							this.props.solarCalculationStateMessage : ''}>
 							<div className="dot dot--1"></div>
 							<div className="dot dot--2"></div>
 							<div className="dot dot--3"></div>
@@ -24,14 +25,15 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 					</div>
 				</div>
 				<style jsx>
-				{`
+					{`
 					.map-menu {
 						position: absolute;
 						top: 0;
 						left: 0;
 						width: 300px;
-						height: 600px;
+						max-height: 600px;
 						margin: 8px;
+						padding: 6px;
 						background: radial-gradient(#FFF, #F9F9F9);
 						box-shadow: 0 1px 4px 2px rgba(50, 50, 50, 0.3);
     					border-radius: 4px;
@@ -44,6 +46,7 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						justify-content: center;
 						font-size: 30px;
 						color: navy;
+						user-select: none;
 					}
 
 					.solar-calculation__state {
@@ -51,6 +54,12 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						width: 40px;
 						height: 40px;
 						margin: 0 4px;
+						transform: scale(1);
+						transition: transform 0.1s ease;
+					}
+					{/* emphasise on hover only when there's a alt-text */}
+					.solar-calculation__state:hover[title]:not([title=""]) {
+						transform: scale(1.1);
 					}
 
 					.solar-calculation__state > .dot {
@@ -62,27 +71,76 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						width: 4px;
 						height: 4px;
 						background-color: navy;
-						border-radius: 50%;
+						border-radius: 2px;
+						opacity: 1;
+						transition: all 0.3s;
 					}
 					.solar-calculation__state > .dot.dot--1 {
-						transform: translate(-10px, 10px);
+						transform: translate(-10px, 10px) scale(1);
 					}
 					.solar-calculation__state > .dot.dot--2 {
-						transform: translate(0px, 10px);
+						transform: translate(0px, 10px) scale(1);
 					}
 					.solar-calculation__state > .dot.dot--3 {
-						transform: translate(10px, 10px);
+						transform: translate(10px, 10px) scale(1);
 					}
 
+					
 					.solar-calculation__state--error {
 						
 					}
-					.solar-calculation__state--loading {
-						
+					.solar-calculation__state--error > .dot.dot--1 {
+						transform: translate(0px, 0px) scale(1, 3);
+						background-color: #FFF;
+						z-index: 1;
+						border-radius: 1px;
 					}
+					.solar-calculation__state--error > .dot.dot--2 {
+						transform: translate(0px, 4px) scale(7);
+						background-color: #fc8f3d;
+					}
+					.solar-calculation__state--error > .dot.dot--3 {
+						transform: translate(0px, 11px) scale(1);
+						background-color: #FFF;
+					}
+					
+					.solar-calculation__state--loading {
+					}
+					.solar-calculation__state--loading > .dot.dot--1 {
+						--x-pos: -10px;
+						animation: dot-jump-up 2s ease-in-out 0s infinite;
+					}
+					.solar-calculation__state--loading > .dot.dot--2 {
+						--x-pos: 0px;
+						animation: dot-jump-up 2s ease-in-out 0.3s infinite;
+					}
+					.solar-calculation__state--loading > .dot.dot--3 {
+						--x-pos: 10px;
+						animation: dot-jump-up 2s ease-in-out 0.6s infinite;
+					}
+					@keyframes dot-jump-up {
+						0% { transform: translate(var(--x-pos), 10px) scale(1); }
+						60% { transform: translate(var(--x-pos), 10px) scale(1); }
+						80% { transform: translate(var(--x-pos), 4px) scale(1); }
+						100% { transform: translate(var(--x-pos), 10px) scale(1); }
+					}
+					
+
 					.solar-calculation__state--value {
 						
 					}
+					.solar-calculation__state--value > .dot.dot--1 {
+						transform: translate(-16px, -2px);
+					}
+					.solar-calculation__state--value > .dot.dot--2 {
+						transform: translate(-16px, 4px);
+						opacity: 0;
+					}
+					.solar-calculation__state--value > .dot.dot--3 {
+						transform: translate(-16px, 10px);
+					}
+
+					
 				`}
 				</style>
 			</div>
@@ -91,11 +149,12 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 
 	public componentDidMount() {
 
-    }
+	}
 }
 
 interface IMapMenuProps {
 	solarCalculationState: SolarCalculationState;
+	solarCalculationStateMessage?: string;
 }
 
 interface IMapMenuState {
