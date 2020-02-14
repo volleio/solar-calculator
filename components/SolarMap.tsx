@@ -5,6 +5,7 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import * as turf from '@turf/turf';
 import PvWattsApi from '../api/PvWattsApi';
 import * as PvWatts from '../api/PvWatts';
+import MapMenu, { SolarCalculationState } from './MapMenu';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private readonly SOLAR_CALCULATION_WAIT = 500; // 0.5 seconds
@@ -12,7 +13,6 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private pvWattsApi: PvWattsApi;
 
 	private moduleEfficiency = 0.15;
-
 	private solarCalculationTimeout: number = -1;
 
 	constructor(props: ISolarMapProps) {
@@ -20,12 +20,16 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 
 		this.pvWattsApi = new PvWattsApi();
 		
+		this.state = {
+			solarCalculationState: SolarCalculationState.blank,
+		};
 	}
 
 	public render() {
 		return (
 			<div className="solarmap">
 				<div id="mapbox-container" className="mapbox-container"></div>
+				<MapMenu solarCalculationState={this.state.solarCalculationState}/>
 				<style jsx>
 					{`
 					.solarmap {
@@ -205,7 +209,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 
 		if (polygonData.features.length > 0) {
 			// Loading indicator to show data isn't up to date
-			this.SetSolarCalulationState(SolarCalulationState.loading);
+			this.SetSolarCalculationState(SolarCalculationState.loading);
 
 			// Reset timeout. We only make a query every SOLAR_CALCULATION_WAIT so that requests aren't being made
 			// while the user is currently updating the polygon, and so that we don't overload the API.
@@ -219,7 +223,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			}, this.SOLAR_CALCULATION_WAIT);
 
 		} else { // Polygon deleted
-			this.SetSolarCalulationState(SolarCalulationState.blank);
+			this.SetSolarCalculationState(SolarCalculationState.blank);
 
 			if (evt.type !== 'draw.delete')
 				alert('Use the draw tools to draw a polygon!');
@@ -229,28 +233,28 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>) {
 		solarCalculation.then((response) => {
 			if (response.errors)
-				this.SetSolarCalulationState(SolarCalulationState.error, undefined, response.errors.join('\r\n"'));
+				this.SetSolarCalculationState(SolarCalculationState.error, undefined, response.errors.join('\r\n"'));
 
-			this.SetSolarCalulationState(SolarCalulationState.value, response.outputs);
+			this.SetSolarCalculationState(SolarCalculationState.value, response.outputs);
 		});
 		
 		solarCalculation.catch((reason) => {
 			console.error(reason);
-			this.SetSolarCalulationState(SolarCalulationState.error, undefined, reason instanceof Error ? reason.message : undefined);
+			this.SetSolarCalculationState(SolarCalculationState.error, undefined, reason instanceof Error ? reason.message : undefined);
 		});
 	}
 
-	private SetSolarCalulationState(state: SolarCalulationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
+	private SetSolarCalculationState(state: SolarCalculationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
 		// Remove any style modifications
 
 
 		// Set loading/error styles
-		if (state === SolarCalulationState.loading) {
+		if (state === SolarCalculationState.loading) {
 
-		} else if (state === SolarCalulationState.error) {
+		} else if (state === SolarCalculationState.error) {
 			// if (errorMessage)
 			
-		} else if (state === SolarCalulationState.value) {
+		} else if (state === SolarCalculationState.value) {
 			// Set solar calulation values
 
 		}
@@ -280,17 +284,11 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	}
 }
 
-enum SolarCalulationState {
-	blank,
-	loading,
-	error,
-	value
-}
-
 interface ISolarMapProps {
 }
 
 interface ISolarMapState {
+	solarCalculationState: SolarCalculationState;
 }
 
 export default SolarMap;
