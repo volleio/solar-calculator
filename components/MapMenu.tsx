@@ -14,7 +14,28 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 			${this.props.solarCalculationState === SolarCalculationState.value ? 'solar-calculation__state--value' : ''}`;
 
 		return (
-			<div className="map-menu">
+			<div className="map-menu" onClick={(evt) => {
+				// Expands the menu on mobile devices
+				const menu = evt.currentTarget as HTMLElement;
+				if (menu.classList.contains('map-menu--expanded'))
+					menu.classList.remove('map-menu--expanded');
+				else
+					menu.classList.add('map-menu--expanded');
+			}}>
+				<div className="map-directions">
+					<div className={'direction-zoom' + (this.props.selectedDirection === 'zoom' ? ' direction--selected' : '')}>
+						1. Zoom into the map
+					</div>
+					<div className={'direction-click' + (this.props.selectedDirection === 'click' ? ' direction--selected' : '')}>
+						2. Click to outline a solar array area, 
+						<br/>
+						click the first point to close the area
+					</div>
+					<div className={'direction-adjust' + (this.props.selectedDirection === 'adjust' ? ' direction--selected' : '')}>
+						3. Select and drag points to update the solar array
+					</div>
+				</div>
+				{this.props.solarCalculationState !== SolarCalculationState.blank ? 
 				<div className="solar-calculation">
 					<div className="solar-calculation__header">
 						Solar Energy
@@ -37,7 +58,7 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 					</div>
 					: null}
 					{this.props.solarValues ? <SolarValueTable solarValues={this.props.solarValues} /> : null}
-				</div>
+				</div> : null}
 				<style jsx>
 					{`
 					.map-menu {
@@ -51,6 +72,31 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						background: radial-gradient(#FFF, #F9F9F9);
 						box-shadow: 0 1px 4px 2px rgba(50, 50, 50, 0.3);
     					border-radius: 4px;
+						overflow: auto;
+					}
+
+					@media screen and (max-width: 640px) {
+						.map-menu {
+							width: 80%;
+							height: 600px;
+							top: auto;
+							bottom: -410px;
+							left: 10%;
+							margin: 0;
+							transition: bottom 0.3s ease;
+						}
+						.map-menu.map-menu--expanded {
+							bottom: 0;
+						}
+					}
+
+					.map-directions {
+    					margin: 12px;
+						font-size: 17px;
+					}
+
+					.direction--selected {
+						font-weight: bold;
 					}
 
 					.section-divider {
@@ -179,6 +225,7 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 }
 
 interface IMapMenuProps {
+	selectedDirection: 'zoom' | 'click' | 'adjust';
 	solarCalculationState: SolarCalculationState;
 	solarCalculationStateMessage?: string;
 	area?: number;

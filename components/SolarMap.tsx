@@ -13,6 +13,7 @@ import { MapboxStyles } from './MapboxStyles';
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private readonly POLYGON_UPDATE_WAIT = 250; // 0.25 seconds
 	private readonly SOLAR_CALCULATION_WAIT = 1000; // 1 second
+	private readonly MINIMUM_ZOOM = 15;
 
 	private pvWattsApi: PvWattsApi;
 
@@ -28,6 +29,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		
 		this.state = {
 			solarCalculationState: SolarCalculationState.blank,
+			selectedDirection: 'zoom',
 		};
 	}
 
@@ -35,8 +37,10 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		return (
 			<div className="solarmap">
 				<div id="mapbox-container" className="mapbox-container"></div>
-				<MapMenu solarCalculationState={this.state.solarCalculationState} solarCalculationStateMessage={this.state.solarCalculationStateMessage}
-					area={this.state.polygonArea} nominalPower={this.state.nominalPower} solarValues={this.state.solarValues} />
+				<MapMenu solarCalculationState={this.state.solarCalculationState} 
+					solarCalculationStateMessage={this.state.solarCalculationStateMessage}
+					area={this.state.polygonArea} nominalPower={this.state.nominalPower} 
+					solarValues={this.state.solarValues} selectedDirection={this.state.selectedDirection} />
 				<style jsx>
 					{`
 					.solarmap {
@@ -74,7 +78,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 
 		const map = new mapboxgl.Map({
 			container: 'mapbox-container',
-			style: 'mapbox://styles/lrvolle/ck6l3i57b1bhs1imlp62ugefg',
+			style: 'mapbox://styles/mapbox/satellite-streets-v11',
 			center: [-98.5795, 39.8283],
 			zoom: 3,
 		});
@@ -84,7 +88,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			displayControlsDefault: false,
 			controls: {
 				polygon: false,
-				trash: false
+				trash: true
 			},
 			defaultMode: 'static',
 			styles: MapboxStyles.DrawStyles,
@@ -108,18 +112,30 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		map.on('draw.create', (evt) => {
 			this.hasDrawnPolygon = true;
 			this.UpdatePolygon(evt, draw);
+			this.setState({ selectedDirection: map.getZoom() < this.MINIMUM_ZOOM ? 'zoom' : 'adjust' });
 		});
 		map.on('draw.delete', (evt) => {
 			this.hasDrawnPolygon = false;
-			this.UpdatePolygon(evt, draw);
+
+			// prevent any waiting updates 
+			clearTimeout(this.polygonUpdateTimeout);
+			clearTimeout(this.solarCalculationTimeout);
+
+			this.SetSolarCalculationState(SolarCalculationState.blank);
+			draw.changeMode('draw_polygon');
+			this.setState({ selectedDirection: map.getZoom() < this.MINIMUM_ZOOM ? 'zoom' : 'click' });
 		});
 		map.on('draw.update', (evt) => this.UpdatePolygon(evt, draw));
 
 		map.on('zoomend', (evt) => {
-			if (map.getZoom() < 16)
+			if (map.getZoom() < this.MINIMUM_ZOOM) {
 				draw.changeMode('static');
-			else
-				draw.changeMode(this.hasDrawnPolygon ? 'simple_select' : 'draw_polygon')
+				this.setState({ selectedDirection: 'zoom' });
+			}
+			else {
+				draw.changeMode(this.hasDrawnPolygon ? 'simple_select' : 'draw_polygon');
+				this.setState({ selectedDirection: this.hasDrawnPolygon ? 'adjust' : 'click' });
+			}
 		});
 	}
 
@@ -219,6 +235,9 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>): void {
 		console.debug("HandleSolarCalculation");
 		solarCalculation.then((response) => {
+			if (!this.hasDrawnPolygon)
+				return // Polygon was deleted
+
 			if (response.errors.length > 0)
 				this.SetSolarCalculationState(SolarCalculationState.error, undefined, response.errors.join('\r\n"'));
 
@@ -271,6 +290,7 @@ interface ISolarMapProps {
 }
 
 interface ISolarMapState {
+	selectedDirection: 'zoom' | 'click' | 'adjust';
 	solarCalculationState: SolarCalculationState;
 	solarCalculationStateMessage?: string;
 	polygonArea?: number;

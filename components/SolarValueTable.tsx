@@ -35,6 +35,7 @@ class SolarValueTable extends Component<ISolarValueTableProps, ISolarValueTableS
 					{`
 					.solar-values{
 						margin: 10px;
+						margin-bottom: 0;
 					}
 					
 					.solar-values-table {
@@ -54,15 +55,22 @@ class SolarValueTable extends Component<ISolarValueTableProps, ISolarValueTableS
 						overflow: hidden;
 						cursor: pointer;
 					}
-					.solar-values-table:not(.solar-values-table--expanded)::after {
-						top: 0;
-						bottom: 0;
-						left: 0;
-						right: 0;
-						background: linear-gradient(0deg, #FFF, transparent);
-					}
 					.solar-values-table.solar-values-table--expanded {
 						height: auto;
+					}
+					@media screen and (min-width: 640px) {
+						.solar-values-table:not(.solar-values-table--expanded)::after {
+							top: 0;
+							bottom: 0;
+							left: 0;
+							right: 0;
+							background: linear-gradient(0deg, #FFF, transparent);
+						}
+					}
+					@media screen and (max-width: 640px) {
+						.solar-values-table {
+							height: auto;
+						}
 					}
 
 					.solar-value-header {
