@@ -24,14 +24,20 @@
     "@mapbox/mapbox-gl-draw": "^1.1.2",
     "@mapbox/mapbox-gl-geocoder": "^4.5.1",
     "@turf/area": "^6.0.1",
+    "@turf/centroid": "^6.0.2",
     "@turf/turf": "^5.1.6",
+    "@types/request-promise-native": "^1.0.17",
     "@zeit/next-css": "^1.0.1",
+    "dotenv": "^8.2.0",
     "mapbox-gl": "^1.7.0",
     "next": "^9.2.1",
     "next-compose": "0.0.2",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "typescript": "^3.7.5"
+    "request": "^2.88.2",
+    "request-promise-native": "^1.0.8",
+    "typescript": "^3.7.5",
+    "uninstall": "0.0.0"
   },
   "devDependencies": {
     "@types/mapbox-gl": "^1.7.0",
