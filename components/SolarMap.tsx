@@ -74,6 +74,8 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	}
 
 	public componentDidMount() {
+
+		// Set up mapbox
 		mapboxgl.accessToken = 'pk.eyJ1IjoibHJ2b2xsZSIsImEiOiJjajFpcndxN2swMWJ0MnFvaG1uaWNlOHVkIn0.ptRQFGDH9slee6PowWtXOg';
 
 		const map = new mapboxgl.Map({
@@ -83,6 +85,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			zoom: 3,
 		});
 
+		// Set default drawing mode to static, so that polygons can only be drawn when zoomed in
 		MapboxDraw.modes.static = StaticMode;
 		const draw = new MapboxDraw({
 			displayControlsDefault: false,
@@ -95,13 +98,13 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		});
 		map.addControl(draw);
 
+		// Search & 'locate me' buttons
 		map.addControl(new mapboxgl.GeolocateControl({
 			positionOptions: {
 				enableHighAccuracy: true
 			},
 			trackUserLocation: true
 		}));
-
 		map.addControl(
 			new MapboxGeocoder({
 				accessToken: mapboxgl.accessToken,
@@ -109,6 +112,7 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			})
 		);
 
+		// Listeners for when polygons have been created, deleted, or updated
 		map.on('draw.create', (evt) => {
 			this.hasDrawnPolygon = true;
 			this.UpdatePolygon(evt, draw);
