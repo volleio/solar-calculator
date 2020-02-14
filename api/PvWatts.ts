@@ -118,13 +118,13 @@ export interface Response {
     ssc_info: Object;
 
     /** Information about the climate data used in the simulation. */
-    station_info: PvWattsResponseStationInfo;
+    station_info: ResponseStationInfo;
 
     /** The data outputs from the simulation. */
-    outputs: PvWattsResponseOutput;
+    outputs: ResponseOutput;
 }
 
-export interface PvWattsResponseStationInfo {
+export interface ResponseStationInfo {
     /** Latitude of the climate station. */
     lat: number;	
 
@@ -153,7 +153,7 @@ export interface PvWattsResponseStationInfo {
     distance: number;
 }
 
-export interface PvWattsResponseOutput {
+export interface ResponseOutput {
     /**
      * Monthly plane of array irradiance values. (kWh/m2) 
      * The array of values represents the value for each month, 

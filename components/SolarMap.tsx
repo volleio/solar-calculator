@@ -3,15 +3,23 @@ import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import * as turf from '@turf/turf';
-import area from '@turf/area';
+import PvWattsApi from '../api/PvWattsApi';
+import * as PvWatts from '../api/PvWatts';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private readonly SOLAR_CALCULATION_WAIT = 500; // 0.5 seconds
+
+	private pvWattsApi: PvWattsApi;
+
+	private moduleEfficiency = 0.15;
 
 	private solarCalculationTimeout: number = -1;
 
 	constructor(props: ISolarMapProps) {
 		super(props);
+
+		this.pvWattsApi = new PvWattsApi();
+		
 	}
 
 	public render() {
@@ -205,7 +213,9 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 				clearTimeout(this.solarCalculationTimeout);
 
 			this.solarCalculationTimeout = window.setTimeout(() => {
-				this.UpdateSolarCalculation(polygonData)
+				// Make request for solar calculation and handle result
+				const solarCalculation = this.UpdateSolarCalculation(polygonData);
+				this.HandleSolarCalculation(solarCalculation);
 			}, this.SOLAR_CALCULATION_WAIT);
 
 		} else { // Polygon deleted
@@ -216,7 +226,21 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		}
 	}
 
-	private SetSolarCalulationState(state: SolarCalulationState) {
+	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>) {
+		solarCalculation.then((response) => {
+			if (response.errors)
+				this.SetSolarCalulationState(SolarCalulationState.error, undefined, response.errors.join('\r\n"'));
+
+			this.SetSolarCalulationState(SolarCalulationState.value, response.outputs);
+		});
+		
+		solarCalculation.catch((reason) => {
+			console.error(reason);
+			this.SetSolarCalulationState(SolarCalulationState.error, undefined, reason instanceof Error ? reason.message : undefined);
+		});
+	}
+
+	private SetSolarCalulationState(state: SolarCalulationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
 		// Remove any style modifications
 
 
@@ -224,30 +248,35 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		if (state === SolarCalulationState.loading) {
 
 		} else if (state === SolarCalulationState.error) {
-
+			// if (errorMessage)
+			
 		} else if (state === SolarCalulationState.value) {
 			// Set solar calulation values
 
 		}
 	}
 
-	/** */
+	/**
+	 * Requests the PvWatts API to calculate the solar array output.
+	 * @param polygonData Mapbox GeoJSON data for calculating 
+	 */
 	private async UpdateSolarCalculation(polygonData: any) {
 		// Use turf to calculate necessary/relevant info about the polygon
-		const area = turf.area(polygonData);
-		const center = turf.center(polygonData);
+		const area = turf.area(polygonData); // square meters
+		const system_capacity = area * this.moduleEfficiency; // DC System Size in kW
+		if (system_capacity > 500000)
+			throw "System capacity exceeds the maximum, please reduce the area or decrease module efficiency.";
 
-		const pvWattsResponse = await (await fetch('api/PvWatts', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'Content-Type': 'application/json',
-			},
-			body: querystring.stringify({
-				tp1 : newTypingPattern,
-				tp2 : oldTypingPattern,
-				quality : quality.toString(),
-			}),
-		})).json();
+		if (system_capacity < 0.05)
+			throw "System capacity does not meet minimum, please increase the area or module efficiency.";
+
+		const centroid = turf.centroid(polygonData);
+		if (!centroid.geometry)
+			throw "Could not calculate centroid of polygon.";
+
+		const [lon, lat] = centroid.geometry.coordinates;
+
+		return this.pvWattsApi.GetPvWattsData({ system_capacity, lat, lon });
 	}
 }
 

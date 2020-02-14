@@ -4,35 +4,22 @@ import * as PvWatts from './PvWatts';
  * Tool for making API requests to PVWatts V6
  * API documentation online at https://developer.nrel.gov/docs/solar/pvwatts/v6/#request-parameters
  */
-
 export default class PvWattsApi {
     private apiOptions: PvWattsApiOptions;
     private apiAdvancedOptions: PvWattsApiAdvancedOptions;
 
-    constructor(options: PvWattsApiOptions, advancedOptions: PvWattsApiAdvancedOptions) {
-        this.apiOptions = options;
-        this.apiAdvancedOptions = advancedOptions;
+    constructor(options?: PvWattsApiOptions, advancedOptions?: PvWattsApiAdvancedOptions) {
+        this.apiOptions = options || {};
+        this.apiAdvancedOptions = advancedOptions || {};
     }
 
+    /**
+     * 
+     * @param requestOptions location 
+     */
     public async GetPvWattsData(requestOptions: PvWattsRequestOptions): Promise<PvWatts.Response> {
         // Set up request parameters with default values
-        const requestParameters: PvWatts.RequestParameters = {
-            format: "json",
-            api_key: null,
-            system_capacity: 4,
-            module_type: PvWatts.ModuleType.standard,
-            losses: 14.08,
-            array_type: PvWatts.ArrayType.fixed_open_rack,
-            tilt: 20,
-            azimuth: 180,
-            lat: 42.3816019,
-            lon: -71.0783428,
-            radius: 0,
-            timeframe: "monthly",
-            dc_ac_ratio: 1.2,
-            gcr: 0.4,
-            inv_eff: 96,
-        };
+        const requestParameters: PvWatts.RequestParameters = new PvWattsRequestDefaultParameters();
 
         // Overwrite requestParameter default values with options from class & request
         Object.assign(requestParameters, this.apiOptions);
@@ -51,14 +38,26 @@ export default class PvWattsApi {
     }
 }
 
+class PvWattsRequestDefaultParameters {
+    public format: "json" | "xml" = "json";
+    public api_key = null;
+    public system_capacity = 4;
+    public module_type = PvWatts.ModuleType.standard;
+    public losses = 14.08;
+    public array_type = PvWatts.ArrayType.fixed_open_rack;
+    public tilt = 20;
+    public azimuth = 180;
+    public lat = 42.3816019;
+    public lon = -71.0783428;
+    public radius = 0;
+    public timeframe: "monthly" | "hourly" = "monthly";
+    public dc_ac_ratio = 1.2;
+    public gcr = 0.4;
+    public inv_eff = 96;
+}
+
 /** Subset of PvWattsRequestParameters that is set once at startup */
 interface PvWattsApiOptions {
-    /** 
-     * Nameplate capacity (kW).
-     * Range: 0.05 to 500000
-     */
-    system_capacity?: number;
-
     /** Module type. */
     module_type?: PvWatts.ModuleType;
 
@@ -111,14 +110,21 @@ interface PvWattsApiAdvancedOptions {
 /** Subset of PvWattsRequestParameters that is set by the caller each request */
 interface PvWattsRequestOptions {
     /** 
+     * Nameplate capacity (kW). This is dependant on area and module efficiency, 
+     * so it must be calculated each request.
+     * Range: 0.05 to 500000
+     */
+    system_capacity: number;
+
+    /** 
      * The latitude for the location to use.
      * Range: -90.0 to 90.0
      */
-    lat?: number;
+    lat: number;
 
     /** 
      * The longitude  for the location to use.
      * Range: -180.0 to 180.0
      */
-    lon?: number;
+    lon: number;
 }

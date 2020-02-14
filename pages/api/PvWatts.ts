@@ -1,12 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PvWattsRequestParameters, PvWattsResponse } from '../../api/PvWatts';
+import * as PvWatts from '../../api/PvWatts';
 import dotenv from 'dotenv';
 import fetch from 'request-promise-native';
 
 dotenv.config();
 
-export default async (req: NextApiRequest, res: NextApiResponse<PvWattsResponse>) => {
-    const requestParameters: PvWattsRequestParameters = req.body;
+export default async (req: NextApiRequest, res: NextApiResponse<PvWatts.Response>) => {
+    const requestParameters: PvWatts.RequestParameters = req.body;
 
     // Set API key server-side
     if (!process.env.PVWATTS_API_KEY)
@@ -39,7 +39,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<PvWattsResponse>
 
     // Fetch info from API, with API key
     const baseApiUrl = process.env.PVWATTS_BASE_URL || 'https://developer.nrel.gov/api/pvwatts/v6.json?';
-    const pvWattsResponse: PvWattsResponse = await (await fetch(baseApiUrl + queryParameters)).json();
+    const pvWattsResponse: PvWatts.Response = JSON.parse(await fetch(baseApiUrl + queryParameters));
 
     // TODO: do we need to parse & stringify same JSON?
     res.status(200).json(pvWattsResponse);
