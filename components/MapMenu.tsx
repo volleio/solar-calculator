@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import * as PvWatts from '../api/PvWatts';
+import SolarValueTable from './SolarValueTable';
 
 class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 	constructor(props: IMapMenuProps) {
@@ -23,6 +25,18 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 							<div className="dot dot--3"></div>
 						</div>
 					</div>
+					{this.props.area && this.props.nominalPower ?
+					<div className="immediate-calculations">
+						<div className="section-divider"></div>
+						<div className="calculation-line">
+							Area: <b>{Math.round(this.props.area)} m²</b>
+						</div>
+						<div className="calculation-line">
+							Nominal power: <b>{Math.round(this.props.nominalPower)} kWdc</b>
+						</div>
+					</div>
+					: null}
+					{this.props.solarValues ? <SolarValueTable solarValues={this.props.solarValues} /> : null}
 				</div>
 				<style jsx>
 					{`
@@ -37,6 +51,16 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						background: radial-gradient(#FFF, #F9F9F9);
 						box-shadow: 0 1px 4px 2px rgba(50, 50, 50, 0.3);
     					border-radius: 4px;
+					}
+
+					.section-divider {
+						margin: 8px 14px;
+						border-bottom: 1px solid #DDD;
+					}
+
+					.solar-calculation {
+						display: flex;
+						flex-direction: column;
 					}
 
 					.solar-calculation__header {
@@ -140,7 +164,9 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 						transform: translate(-16px, 10px);
 					}
 
-					
+					.calculation-line {
+						margin: 0 24px;
+					}
 				`}
 				</style>
 			</div>
@@ -155,6 +181,9 @@ class MapMenu extends Component<IMapMenuProps, IMapMenuState> {
 interface IMapMenuProps {
 	solarCalculationState: SolarCalculationState;
 	solarCalculationStateMessage?: string;
+	area?: number;
+	nominalPower?: number;
+	solarValues?: PvWatts.ResponseOutput;
 }
 
 interface IMapMenuState {

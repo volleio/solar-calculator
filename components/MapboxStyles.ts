@@ -1,4 +1,4 @@
-export namespace Styles {
+export namespace MapboxStyles {
     export const DrawStyles = [
         // ACTIVE (being drawn)
         // line stroke

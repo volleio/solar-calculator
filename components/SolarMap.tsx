@@ -8,7 +8,7 @@ import * as turf from '@turf/turf';
 import PvWattsApi from '../api/PvWattsApi';
 import * as PvWatts from '../api/PvWatts';
 import MapMenu, { SolarCalculationState } from './MapMenu';
-import { Styles } from './Styles';
+import { MapboxStyles } from './MapboxStyles';
 
 class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	private readonly POLYGON_UPDATE_WAIT = 250; // 0.25 seconds
@@ -35,7 +35,8 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		return (
 			<div className="solarmap">
 				<div id="mapbox-container" className="mapbox-container"></div>
-				<MapMenu solarCalculationState={this.state.solarCalculationState} solarCalculationStateMessage={this.state.solarCalculationStateMessage}/>
+				<MapMenu solarCalculationState={this.state.solarCalculationState} solarCalculationStateMessage={this.state.solarCalculationStateMessage}
+					area={this.state.polygonArea} nominalPower={this.state.nominalPower} solarValues={this.state.solarValues} />
 				<style jsx>
 					{`
 					.solarmap {
@@ -78,6 +79,18 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			zoom: 3,
 		});
 
+		MapboxDraw.modes.static = StaticMode;
+		const draw = new MapboxDraw({
+			displayControlsDefault: false,
+			controls: {
+				polygon: false,
+				trash: false
+			},
+			defaultMode: 'static',
+			styles: MapboxStyles.DrawStyles,
+		});
+		map.addControl(draw);
+
 		map.addControl(new mapboxgl.GeolocateControl({
 			positionOptions: {
 				enableHighAccuracy: true
@@ -91,18 +104,6 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 				mapboxgl: mapboxgl
 			})
 		);
-
-		MapboxDraw.modes.static = StaticMode;
-		const draw = new MapboxDraw({
-			displayControlsDefault: false,
-			controls: {
-				polygon: true,
-				trash: true
-			},
-			defaultMode: 'static',
-			styles: Styles.DrawStyles,
-		});
-		map.addControl(draw);
 
 		map.on('draw.create', (evt) => {
 			this.hasDrawnPolygon = true;
@@ -122,6 +123,11 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		});
 	}
 
+	/**
+	 * Decides whether to begin solar calculation update process or reset calculation
+	 * @param evt 
+	 * @param draw 
+	 */
 	private UpdatePolygon(evt: Event, draw: MapboxDraw): void {
 		const polygonData = draw.getAll();
 
@@ -133,7 +139,13 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 			if (this.polygonUpdateTimeout === -1) {
 				this.polygonUpdateTimeout = window.setTimeout(() => {
 					this.polygonUpdateTimeout = -1;
-					this.UpdatePolygonCalculations(polygonData);
+
+					try {
+						this.UpdatePolygonCalculations(polygonData);
+					}
+					catch (error) {
+						this.SetSolarCalculationState(SolarCalculationState.error, undefined, error?.message);
+					}
 				}, this.POLYGON_UPDATE_WAIT);
 			}
 		} else { // Polygon deleted
@@ -144,8 +156,35 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		}
 	}
 
+	/**
+	 * Waits until polygon updates stop and then calls method to update solar calculation
+	 * @param polygonData 
+	 */
 	private UpdatePolygonCalculations(polygonData: any): void {
 		console.debug("UpdatePolygonCalculations");
+
+		// Use turf to calculate necessary/relevant info about the polygon
+		const area = turf.area(polygonData); // square meters
+		const nominalPower = area * this.moduleEfficiency; // DC System Size in kW
+		if (nominalPower > 500000)
+			throw "System capacity exceeds the maximum, please reduce the area or decrease module efficiency.";
+
+		if (nominalPower < 0.05)
+			throw "System capacity does not meet minimum, please increase the area or module efficiency.";
+
+		const centroid = turf.centroid(polygonData);
+		if (!centroid.geometry)
+			throw "Could not calculate centroid of polygon.";
+
+		const [lon, lat] = centroid.geometry.coordinates;
+
+		this.setState({ 
+			polygonArea: area,
+			nominalPower: nominalPower,
+			latitude: lat,
+			longitude: lon,
+		});
+
 		// Reset solar calculation timeout. We only make a query at most SOLAR_CALCULATION_WAIT ms so that requests 
 		// aren't being made while the user is currently updating the polygon, and so that we don't overload the API.
 		if (this.solarCalculationTimeout >= 0)
@@ -166,30 +205,21 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 	 */
 	private async UpdateSolarCalculation(polygonData: any) {
 		console.debug("UpdateSolarCalculation");
-		// Use turf to calculate necessary/relevant info about the polygon
-		const area = turf.area(polygonData); // square meters
-		const system_capacity = area * this.moduleEfficiency; // DC System Size in kW
-		if (system_capacity > 500000)
-			throw "System capacity exceeds the maximum, please reduce the area or decrease module efficiency.";
-
-		if (system_capacity < 0.05)
-			throw "System capacity does not meet minimum, please increase the area or module efficiency.";
-
-		const centroid = turf.centroid(polygonData);
-		if (!centroid.geometry)
-			throw "Could not calculate centroid of polygon.";
-
-		const [lon, lat] = centroid.geometry.coordinates;
-
-		// First update immediately calculatable values: area and nominal power
-
-		return this.pvWattsApi.GetPvWattsData({ system_capacity, lat, lon });
+		return this.pvWattsApi.GetPvWattsData({ 
+			system_capacity: this.state.nominalPower as number, 
+			lat: this.state.latitude as number, 
+			lon: this.state.longitude as number, 
+		});
 	}
 
+	/**
+	 * Handles the response from a call to GetPvWattsData
+	 * @param solarCalculation Promise to handle
+	 */
 	private HandleSolarCalculation(solarCalculation: Promise<PvWatts.Response>): void {
 		console.debug("HandleSolarCalculation");
 		solarCalculation.then((response) => {
-			if (response.errors)
+			if (response.errors.length > 0)
 				this.SetSolarCalculationState(SolarCalculationState.error, undefined, response.errors.join('\r\n"'));
 
 			this.SetSolarCalculationState(SolarCalculationState.value, response.outputs);
@@ -201,21 +231,38 @@ class SolarMap extends Component<ISolarMapProps, ISolarMapState> {
 		});
 	}
 
+	/**
+	 * Update the state of the menu with the state of the solar calculation
+	 * @param state calculation state
+	 * @param values solar calculation values
+	 * @param errorMessage any error messages to show
+	 */
 	private SetSolarCalculationState(state: SolarCalculationState, values?: PvWatts.ResponseOutput, errorMessage?: string) {
 		this.setState({ solarCalculationStateMessage: errorMessage });
 		
 		// Set menu styles and text
 		if (state === SolarCalculationState.blank) {
-			this.setState({ solarCalculationState: SolarCalculationState.blank });
+			this.setState({ 
+				solarCalculationState: SolarCalculationState.blank,
+				polygonArea: undefined,
+				nominalPower: undefined,
+			});
 		} else if (state === SolarCalculationState.loading) {
 			this.setState({ solarCalculationState: SolarCalculationState.loading });
 		} else if (state === SolarCalculationState.error) {
-			this.setState({ solarCalculationState: SolarCalculationState.error });
+			this.setState({ 
+				solarCalculationState: SolarCalculationState.error,
+				polygonArea: undefined,
+				nominalPower: undefined,
+			});
 		} else if (state === SolarCalculationState.value) {
-			this.setState({ solarCalculationState: SolarCalculationState.value });
+			console.debug(values)
 
 			// Set solar calulation values
-			console.debug(values)
+			this.setState({ 
+				solarCalculationState: SolarCalculationState.value,
+				solarValues: values,
+			});
 		}
 	}
 }
@@ -226,6 +273,11 @@ interface ISolarMapProps {
 interface ISolarMapState {
 	solarCalculationState: SolarCalculationState;
 	solarCalculationStateMessage?: string;
+	polygonArea?: number;
+	nominalPower?: number;
+	latitude?: number;
+	longitude?: number;
+	solarValues?: PvWatts.ResponseOutput;
 }
 
 export default SolarMap;
