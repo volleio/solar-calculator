@@ -27,6 +27,24 @@ class Layout extends Component<ILayoutProps, ILayoutState> {
 
 					body {
 						margin: 0;
+						overflow: hidden;
+					}
+
+					*::-webkit-scrollbar-track
+					{
+						-webkit-box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+						background-color: #F5F5F5;
+					}
+
+					*::-webkit-scrollbar
+					{
+						width: 8px;
+						background-color: #F5F5F5;
+					}
+
+					*::-webkit-scrollbar-thumb
+					{
+					background-color: #555;
 					}
 				`}
 				</style>

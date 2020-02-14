@@ -22,6 +22,7 @@
   "homepage": "https://github.com/volleio/solar-calculator#readme",
   "dependencies": {
     "@mapbox/mapbox-gl-draw": "^1.1.2",
+    "@mapbox/mapbox-gl-draw-static-mode": "^1.0.1",
     "@mapbox/mapbox-gl-geocoder": "^4.5.1",
     "@turf/area": "^6.0.1",
     "@turf/centroid": "^6.0.2",
